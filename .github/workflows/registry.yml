@@ -1,0 +1,82 @@
+name: Official registry collection
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 23 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'config/registry-sources.json'
+      - 'scripts/collect_registry.py'
+      - 'public/registry/**'
+      - 'public/registry.html'
+      - 'public/data-status.html'
+      - 'tests/*registry*'
+      - '.github/workflows/registry.yml'
+permissions:
+  contents: write
+concurrency:
+  group: official-registry-main
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test parsing and matching
+        run: |
+          python -m unittest discover -s tests -p 'test_registry.py' -v
+          node --test tests/registry.test.mjs
+      - name: Collect allowlisted official originals
+        id: collection
+        continue-on-error: true
+        run: python scripts/collect_registry.py
+      - name: Retain raw evidence and searchable snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-registry-evidence
+          path: |
+            registry-raw/
+            public/data/registry.json
+            public/registry/
+            public/registry.html
+            public/data-status.html
+          retention-days: 90
+          if-no-files-found: error
+      - name: Publish only the normalized public registry
+        if: always()
+        run: |
+          test -f public/data/registry.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/data/registry.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'data: refresh official registry evidence and collection status'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Record coverage in run summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path('public/data/registry.json')
+          if p.exists():
+              d=json.loads(p.read_text())
+              with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
+                  f.write('# 공식 명부 수집\n\n전국 전체가 아닌 실제 수집 범위입니다.\n\n')
+                  f.write('|출처|상태|건수|기준일|\n|---|---|---:|---|\n')
+                  for s in d['sources']:f.write(f"|{s['label']}|{s['status']}|{s['count']}|{s.get('dataset_date') or '미확인'}|\n")
+          PY
+      - name: Mark partial collection as failure for operator attention
+        if: steps.collection.outcome == 'failure'
+        run: exit 1
