@@ -16,7 +16,7 @@ ALIASES = {
  'authority': ['관리기관명','등록관청','등록기관','관리기관'],
  'authority_phone': ['관리기관전화번호'],
  'dataset_date': ['데이터기준일자','자료기준일','기준일자','데이터기준일'],
- 'status_raw': ['등록상태','영업상태','상태'],
+ 'status_raw': ['등록상태','영업상태','영업구분','영업상태명','폐업여부','상태'],
 }
 class ValidationError(ValueError): pass
 
@@ -143,7 +143,7 @@ def parse(raw, source, meta):
             if not r['dataset_date']:raise ValidationError('자료 기준일 확인 불가')
             if r['dataset_date']>date.today().isoformat():raise ValidationError('미래 자료 기준일')
             r['authority']=r['authority'] or ''
-            r.update(source_id=source['id'],region=source['region'],kind=source['kind'],source_row=row_number,source_sheet=sheet)
+            r.update(source_id=source['id'],region=source['region'],kind=source['kind'],source_row=row_number,source_sheet=sheet,source_refs=[{'sheet':sheet,'row':row_number}])
             identity='|'.join([source['id'],norm(r['category']),norm(r['authority']),norm(r['registration_no']) or norm(r['name'])+'|'+norm(r['address'])])
             r['record_key']=hashlib.sha256(identity.encode()).hexdigest()[:24]
             mapped.append(r)
@@ -151,11 +151,20 @@ def parse(raw, source, meta):
     if len(mapped)<source.get('min_rows',1): raise ValidationError('기대 최소 건수 미달')
     if meta.get('expected_rows') is not None and len(mapped)!=meta['expected_rows']:
         raise ValidationError(f"원문 공표 행수({meta['expected_rows']})와 파일 행수({len(mapped)}) 불일치")
+    # 동일한 공식 행이 여러 번 실린 경우 하나의 검색 항목으로 합칩니다.
+    # 같은 식별자에 서로 다른 공식 값이 있으면 자동으로 고르지 않고 수집을 중단합니다.
     seen={}
     for r in mapped:
-        if r['record_key'] in seen: raise ValidationError('중복 등록 식별자: '+r['record_key'])
-        seen[r['record_key']]=r
-    return mapped
+        key=r['record_key']
+        if key not in seen:
+            seen[key]=r
+            continue
+        prev=seen[key]
+        conflicts=[field for field in ALIASES if text(prev.get(field)) != text(r.get(field))]
+        if conflicts:
+            raise ValidationError('동일 식별자의 상충 행: '+key+' ('+','.join(conflicts)+')')
+        prev.setdefault('source_refs',[{'sheet':prev.get('source_sheet'),'row':prev.get('source_row')}]).extend(r.get('source_refs',[]))
+    return list(seen.values())
 
 def validate_previous(records, previous):
     old=previous.get('records',[])
@@ -185,7 +194,8 @@ def collect(config_path, output, raw_dir):
             diff={'added':len(after.keys()-before.keys()),'missing_from_latest':len(before.keys()-after.keys()),
                   'changed':sum(any(before[k].get(f)!=after[k].get(f) for f in fields) for k in before.keys()&after.keys())}
             state.update(meta,status='success',last_success_at=now,file_sha256=digest,
-                         dataset_date=min(r['dataset_date'] for r in current),count=len(current),
+                         dataset_date=min(r['dataset_date'] for r in current),count=len(current),raw_count=meta.get('expected_rows') or len(current),
+                         duplicate_rows_collapsed=sum(max(0,len(r.get('source_refs',[]))-1) for r in current),
                          last_error=None,diff=diff,registration_number_count=sum(bool(r['registration_no']) for r in current),
                          scope_warning=src.get('scope_note') if any('청주시' in r['address'] for r in current) else None)
             d=raw_dir/src['id'];d.mkdir(parents=True,exist_ok=True)
