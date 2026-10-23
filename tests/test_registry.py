@@ -17,6 +17,9 @@ class Tests(unittest.TestCase):
  def test_dup(self):
   rows=c.parse((CSV+'시험업체,02-001,일반측량,가상도 가상시\n').encode(),S,M)
   self.assertEqual(len(rows),1);self.assertEqual(len(rows[0]['source_refs']),2)
+ def test_harmless_duplicate_name_variant(self):
+  raw='업체명,등록번호,업종,주소\n(주) 시험업체,02-001,일반측량,가상도 가상시\n주식회사 시험업체,02-001,일반측량,가상도 가상시\n'
+  rows=c.parse(raw.encode(),S,M);self.assertEqual(len(rows),1);self.assertEqual(len(rows[0]['source_refs']),2)
  def test_conflicting_dup(self):
   raw='업체명,등록번호,업종,주소,대표자\n시험업체,02-001,일반측량,가상도 가상시,갑\n시험업체,02-001,일반측량,가상도 가상시,을\n'
   with self.assertRaises(c.ValidationError):c.parse(raw.encode(),S,M)
