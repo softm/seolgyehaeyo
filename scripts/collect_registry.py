@@ -160,7 +160,8 @@ def parse(raw, source, meta):
             seen[key]=r
             continue
         prev=seen[key]
-        conflicts=[field for field in ALIASES if text(prev.get(field)) != text(r.get(field))]
+        normalized_fields={'name','registration_no','category','address','authority'}
+        conflicts=[field for field in ALIASES if (norm(prev.get(field)) != norm(r.get(field)) if field in normalized_fields else text(prev.get(field)) != text(r.get(field)))]
         if conflicts:
             raise ValidationError('동일 식별자의 상충 행: '+key+' ('+','.join(conflicts)+')')
         prev.setdefault('source_refs',[{'sheet':prev.get('source_sheet'),'row':prev.get('source_row')}]).extend(r.get('source_refs',[]))
