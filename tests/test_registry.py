@@ -15,8 +15,15 @@ class Tests(unittest.TestCase):
  def test_no_name(self):
   with self.assertRaises(c.ValidationError):c.parse('성명,금액\n누구,30'.encode(),S,M)
  def test_dup(self):
-  with self.assertRaises(c.ValidationError):c.parse((CSV+'시험업체,02-001,일반측량,가상도 가상시\n').encode(),S,M)
+  rows=c.parse((CSV+'시험업체,02-001,일반측량,가상도 가상시\n').encode(),S,M)
+  self.assertEqual(len(rows),1);self.assertEqual(len(rows[0]['source_refs']),2)
+ def test_conflicting_dup(self):
+  raw='업체명,등록번호,업종,주소,대표자\n시험업체,02-001,일반측량,가상도 가상시,갑\n시험업체,02-001,일반측량,가상도 가상시,을\n'
+  with self.assertRaises(c.ValidationError):c.parse(raw.encode(),S,M)
  def test_multiple_categories(self):self.assertEqual(len(c.parse((CSV+'시험업체,02-001,공공측량,가상도 가상시\n').encode(),S,M)),2)
+ def test_business_status_alias(self):
+  raw='업체명,주소,업종,영업구분\n시험업체,가상도 가상시,건축사사무소,영업중\n'
+  self.assertEqual(c.parse(raw.encode(),S,M)[0]['status_raw'],'영업중')
  def test_count(self):
   with self.assertRaises(c.ValidationError):c.parse(CSV.encode(),S,{**M,'expected_rows':2})
  def test_drop(self):
