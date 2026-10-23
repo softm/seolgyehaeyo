@@ -13,7 +13,7 @@ function render(){
   for(const r of found.slice(page*pageSize,(page+1)*pageSize)){
     const source=data.sources.find(s=>s.id===r.source_id),card=e('article',undefined,'card'),top=e('div',undefined,'card-top');
     top.append(e('span',r.category,'badge'),badge(sourceState(source)));
-    card.append(top,e('h3',r.name),e('p',r.address,'address'),facts([['등록번호',r.registration_no],['대표자',r.representative],['등록기관',r.authority],['자료 기준일',r.dataset_date],['자료 제공',source.publisher]]));
+    card.append(top,e('h3',r.name),e('p',r.address,'address'),facts([['등록번호',r.registration_no],['대표자',r.representative],['등록기관',r.authority],['원자료 영업/등록 상태',r.status_raw],['자료 기준일',r.dataset_date],['자료 제공',source.publisher]]));
     if(source.scope_warning)card.append(e('p',source.scope_warning,'scope-warning'));
     const actions=e('div',undefined,'card-actions'),b=e('button','이 업체와 대조');b.type='button';b.addEventListener('click',()=>openComparison(r,b));
     actions.append(b,link('공식 원문 ↗',source.url));card.append(actions);results.append(card);
@@ -25,7 +25,7 @@ function render(){
 function search(){if(!data)return;page=0;found=searchRecords(data.records,{q:$('q').value,number:$('number').value,region:$('region').value,category:$('category').value});render();}
 function sourceList(){
   const list=$('source-list');list.replaceChildren();
-  for(const s of data.sources){const row=e('div',undefined,'source-row'),left=e('div'),right=e('div');left.append(e('h3',s.label),e('p',s.scope),link('자료 출처 ↗',s.url));right.append(badge(sourceState(s)),e('p',`기준일 ${s.dataset_date||'미확인'} · ${s.count||0}건 · 공표 주기 ${s.publisher_cycle||'미확인'}`),e('p',`수집 성공 ${date(s.last_success_at)}`));if(s.last_error)right.append(e('p',s.last_error));row.append(left,right);list.append(row);}
+  for(const s of data.sources){const row=e('div',undefined,'source-row'),left=e('div'),right=e('div');left.append(e('h3',s.label),e('p',s.scope),link('자료 출처 ↗',s.url));right.append(badge(sourceState(s)),e('p',`기준일 ${s.dataset_date||'미확인'} · 검색 ${s.count||0}건${s.raw_count&&s.raw_count!==s.count?` (원문 ${s.raw_count}행 · 동일행 ${s.duplicate_rows_collapsed||0}개 합침)`:''} · 공표 주기 ${s.publisher_cycle||'미확인'}`),e('p',`수집 성공 ${date(s.last_success_at)}`));if(s.last_error)right.append(e('p',s.last_error));row.append(left,right);list.append(row);}
 }
 async function load(){
   $('load-error').classList.add('hidden');$('results').setAttribute('aria-busy','true');
