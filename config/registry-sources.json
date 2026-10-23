@@ -68,19 +68,6 @@
       "url": "https://www.data.go.kr/data/15126209/fileData.do",
       "min_rows": 20,
       "max_age_days": 550
-    },
-    {
-      "id": "seoul-dongjak-architect",
-      "dataset_id": "15034782",
-      "label": "서울특별시 동작구 건축사사무소 현황",
-      "publisher": "서울특별시 동작구",
-      "scope": "서울특별시 동작구 공개 건축사사무소 자료",
-      "region": "서울특별시 동작구",
-      "kind": "architect",
-      "category": "건축사사무소",
-      "url": "https://www.data.go.kr/data/15034782/fileData.do",
-      "min_rows": 20,
-      "max_age_days": 550
     }
   ],
   "manual_sources": [
@@ -97,6 +84,13 @@
       "url": "https://www.kira.or.kr/",
       "status": "manual",
       "reason": "건축사·사무소 확인 경로입니다. 측량업 등록과 구분해 확인하세요."
+    },
+    {
+      "id": "seoul-dongjak-architect",
+      "label": "서울특별시 동작구 건축사사무소 현황",
+      "url": "https://www.data.go.kr/data/15034782/fileData.do",
+      "status": "manual-review",
+      "reason": "공공데이터포털은 57행으로 공표하지만 2026-10-23 자동수집에서 실제 파일 31행만 확인되어 자동 반영을 보류했습니다. 원문과 제공기관 자료를 직접 확인하세요."
     }
   ]
 }
