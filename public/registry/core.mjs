@@ -28,7 +28,7 @@ export function compareRecord(record,claimed,source,today=new Date()) {
  return {code,title:titles[code],fields,source:sourceState(source,today),caveat:'동일 업체·현재 영업·행정처분·실제 담당자 자격은 별도 확인이 필요합니다. 명부 일치가 업무 품질이나 안전을 보장하지 않습니다.'};
 }
 export function evidenceText(record,source,comparison) {
- const lines=['설계해요 · 공개명부 대조 기록',`업체: ${record.name}`,`업종: ${record.category}`,`등록번호: ${record.registration_no||'원자료 미제공'}`,`주소: ${record.address}`,`제공기관: ${source.publisher}`,`자료 기준일: ${record.dataset_date}`,`마지막 수집 성공: ${source.last_success_at||'없음'}`,`원문: ${source.url}`,`원본 SHA-256: ${source.file_sha256||'없음'}`,`원본 행: ${record.source_sheet} ${record.source_row}`];
+ const lines=['설계해요 · 공개명부 대조 기록',`업체: ${record.name}`,`업종: ${record.category}`,`등록번호: ${record.registration_no||'원자료 미제공'}`,`주소: ${record.address}`,`원자료 영업/등록 상태: ${record.status_raw||'원자료 미제공'}`,`제공기관: ${source.publisher}`,`자료 기준일: ${record.dataset_date}`,`마지막 수집 성공: ${source.last_success_at||'없음'}`,`원문: ${source.url}`,`원본 SHA-256: ${source.file_sha256||'없음'}`,`원본 행: ${record.source_sheet} ${record.source_row}${record.source_refs?.length>1?` (동일 공식행 ${record.source_refs.length}개를 하나로 표시)`:''}`];
  if(comparison)lines.push(`대조: ${comparison.title}`,...comparison.fields.map(f=>`${f.label}: ${f.result} (입력: ${f.provided||'미입력'} / 원문: ${f.official||'미제공'})`));
  lines.push('확인 질문: 현재 등록·영업 상태와 업무를 실제로 수행하고 책임지는 담당자를 알려주세요. 등록증의 업종·번호·등록기관·상호·주소가 최신 자료와 일치하는지 확인 부탁드립니다.','이 기록은 공식 증명서나 무등록·사기 판정이 아닙니다.');return lines.join('\n');
 }
