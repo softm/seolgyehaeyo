@@ -1,0 +1,23 @@
+name: Verify common vault integration
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned dependencies
+        run: |
+          npm install --global pnpm@11.25.0
+          pnpm install --frozen-lockfile
+      - name: Check types and existing registry behavior
+        run: |
+          pnpm exec tsc --noEmit
+          node --test tests/registry.test.mjs
+          python3 -m unittest discover -s tests -p 'test_registry.py'

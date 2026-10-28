@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import RegistryShortcut from "@/components/registry-shortcut";
+import CommonVault from "@/components/common-vault";
 import "./globals.css";
 export const metadata: Metadata = {
   title: "설계해요 — 의뢰자의 설계 동반자",
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ko"><body className="antialiased">{children}<RegistryShortcut /></body></html>;
+  return <html lang="ko"><body className="antialiased">{children}<RegistryShortcut /><CommonVault /></body></html>;
 }
