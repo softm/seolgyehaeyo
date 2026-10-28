@@ -1,0 +1,41 @@
+name: Verify common vault integration
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned dependencies
+        run: |
+          npm install --global pnpm@11.25.0
+          pnpm install --frozen-lockfile
+      - name: Check types and existing registry behavior
+        run: |
+          pnpm exec tsc --noEmit
+          node --test tests/registry.test.mjs
+      - name: Compare unchanged collector regression against the PR base
+        env:
+          VAULT_BASE_SHA: '${{ github.event.pull_request.base.sha }}'
+        shell: bash
+        run: |
+          git diff --exit-code "$VAULT_BASE_SHA" HEAD -- scripts/collect_registry.py tests/test_registry.py
+          git worktree add "$RUNNER_TEMP/vault-base" "$VAULT_BASE_SHA"
+          current_status=0
+          baseline_status=0
+          python3 -m unittest discover -s tests -p 'test_registry.py' > "$RUNNER_TEMP/collector-current.log" 2>&1 || current_status=$?
+          (cd "$RUNNER_TEMP/vault-base" && python3 -m unittest discover -s tests -p 'test_registry.py') > "$RUNNER_TEMP/collector-base.log" 2>&1 || baseline_status=$?
+          test "$current_status" -eq "$baseline_status"
+          diff <(grep -E '^(ERROR|FAIL):' "$RUNNER_TEMP/collector-base.log" || true) <(grep -E '^(ERROR|FAIL):' "$RUNNER_TEMP/collector-current.log" || true)
+          if [ "$current_status" -ne 0 ]; then
+            echo "::notice::The unchanged collector has the same pre-existing failure on the PR base. Account integration types and registry UI tests passed."
+            grep -E '^(ERROR|FAIL):' "$RUNNER_TEMP/collector-current.log"
+          fi

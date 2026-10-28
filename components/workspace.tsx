@@ -1,5 +1,6 @@
 "use client";
 import { newId } from "@/lib/id";
+import { projectDataSchema } from "@/lib/server/project-validation";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowDownToLine, ArrowRight, ArrowUpRight, BookOpen, Building2, Check, CheckCircle2, ChevronRight, CircleHelp, ClipboardCheck, Clock3, FileText, FolderOpen, House, LayoutDashboard, LoaderCircle, LockKeyhole, Menu, MessageCircle, MoreHorizontal, Plus, Search, Settings2, ShieldCheck, Sprout, Upload, Wallet, X } from "lucide-react";
@@ -100,6 +101,51 @@ export default function Workspace({ user, demo = false }: { user: { displayName:
       setForm(projectForm(async input => { const result = await api<{ project: ProjectRecord }>("/api/projects", { method: "POST", body: JSON.stringify(input) }); sequence.current += 1; setLoading(false); setProjects(list => [toSummary(result.project), ...list]); setDetail({ project: result.project, files: [], activity: [] }); setTab("overview"); window.history.replaceState(null, "", `/?project=${result.project.id}`); }));
     }
   }, [user, demo, loading]);
+  // Common account snapshots are explicit copies. Existing D1 ownership stays unchanged.
+  useEffect(() => {
+    const bridgeWindow = window as typeof window & { SoftmSiteState?: unknown };
+    const bridge = {
+      siteId: "seolgyehaeyo",
+      scope: () => active?.id || "no-project",
+      read() {
+        if (!active || !user || demo || loading || mutationLock.current) throw new Error("내 프로젝트를 먼저 열고 저장 중인 작업을 마쳐 주세요.");
+        return projectDataSchema.parse(structuredClone(active.data));
+      },
+      validate: (value: unknown) => projectDataSchema.parse(value),
+      async write(value: unknown) {
+        if (!user || demo) throw new Error("설계해요 작업실에 로그인한 뒤 새 프로젝트 사본으로 복원해 주세요.");
+        if (form || mutationLock.current) throw new Error("작성 중인 내용을 먼저 저장하거나 복사해 주세요.");
+        const next = projectDataSchema.parse(value);
+        mutationLock.current = true; setBusy(true);
+        let created: ProjectRecord | null = null;
+        try {
+          const result = await api<{ project: ProjectRecord }>("/api/projects", {
+            method: "POST",
+            body: JSON.stringify({ name: (next.name + " · 복원본").slice(0, 120), kind: next.kind, phase: next.phase, location: next.location }),
+          });
+          created = result.project;
+          setProjects(list => [toSummary(result.project), ...list]);
+          const saved = await api<{ project: ProjectRecord }>(`/api/projects/${result.project.id}`, {
+            method: "PUT",
+            body: JSON.stringify({ data: { ...next, name: result.project.data.name }, version: result.project.version, summary: "공통 암호화 보관소에서 새 사본 복원" }),
+          });
+          setDetail({ project: saved.project, files: [], activity: [] });
+          setProjects(list => list.map(item => item.id === saved.project.id ? toSummary(saved.project) : item));
+          setTab("overview"); window.history.replaceState(null, "", "?project=" + encodeURIComponent(saved.project.id));
+          setToast("프로젝트 기록을 새 사본으로 복원했습니다. 원본 첨부파일은 기존 프로젝트에서 별도로 보관해 주세요.");
+        } catch (error) {
+          if (created) {
+            await openProject(created.id);
+            throw new Error("복원 사본을 만들었지만 저장 완료를 확인하지 못했습니다. 열린 사본을 확인한 뒤 다시 시도해 주세요.");
+          }
+          throw error;
+        } finally { mutationLock.current = false; setBusy(false); }
+      },
+    };
+    bridgeWindow.SoftmSiteState = bridge;
+    return () => { if (bridgeWindow.SoftmSiteState === bridge) delete bridgeWindow.SoftmSiteState; };
+  }, [active, user, demo, loading, form, openProject]);
+
   function changeTab(next: Tab) { setTab(next); setMobileMenu(false); window.scrollTo({ top: 0, behavior: "smooth" }); }
   function deleteProject(project: ProjectSummary) {
     setForm({ title: "프로젝트를 영구 삭제할까요?", description: "기록, 변경 이력, 업로드한 원본 파일이 함께 삭제됩니다. 필요한 기록과 원본을 먼저 내려받아 주세요. 삭제한 자료는 앱에서 복구할 수 없어요.", danger: true, submitLabel: "기록과 원본 영구 삭제", fields: [{ name: "name", label: `‘${project.name}’을 그대로 입력해 주세요`, required: true }], onSubmit: async values => {
