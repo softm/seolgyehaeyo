@@ -11,3 +11,5 @@
 운영 주소: https://seolgyehaeyo.softm.chatgpt.site
 
 운영 반영에는 중앙 registry의 실제 Sites Origin 반영·Firebase 인증 함수 배포, 기존 Sites 소스 저장소 동기화와 같은 Sites ID로 공식 배포가 필요하다. GitHub 소스 병합·타입 검사는 이 배포를 대신하지 않는다. 현재 로컬 실행 환경이 없어 Sites source helper를 실행하지 못한 상태이므로 이 문서는 운영 완료를 의미하지 않는다.
+
+2026-10-28 검사: 타입 검사와 등록명부 UI 18개 검사가 통과했다. Python 수집기의 `test_harmless_duplicate_name_variant`는 본 변경이 수정하지 않은 기존 코드에서 실패해 PR 기준 커밋과 같은 실패인지 별도로 비교한다. 이 계정 연결 작업에서 수집기 정상화를 완료했다고 표시하지 않는다.
